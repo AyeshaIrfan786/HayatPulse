@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+.venv312/
+venv/
+env/
+
+# Environment variables / secrets
+.env
+.env.*
+!.env.example
+
+# Python cache/tools
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Backend temporary files
+temp_uploads/
+uploads/
+*.log
+
+# Frontend
+node_modules/
+dist/
+build/
+.vite/
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
