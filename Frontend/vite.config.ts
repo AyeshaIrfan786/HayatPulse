@@ -22,14 +22,15 @@ export default defineConfig(async ({ command }) => {
     viteReact(),
   ];
 
-  // Only pull in the Nitro/Cloudflare build plugin for production builds —
-  // it isn't needed for `vite dev`.
+  // Only pull in the Nitro build plugin for production builds — it isn't
+  // needed for `vite dev`. Preset is set to "vercel" so the build output
+  // matches Vercel's Build Output API and deploys correctly there.
   if (command === "build") {
     const { nitro } = await import("nitro/vite");
     plugins.splice(
       plugins.length - 1,
       0,
-      nitro({ preset: "cloudflare-module" }),
+      nitro({ preset: "vercel" }),
     );
   }
 
