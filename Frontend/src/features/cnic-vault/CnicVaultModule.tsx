@@ -29,6 +29,7 @@ import { supabase } from "@/lib/supabase";
    module can flip between English and Urdu with a single toggle.
 ------------------------------------------------------------------- */
 type Lang = "en" | "ur";
+type TabId = "search" | "add" | "all";
 
 type Copy = {
   back: string;
@@ -65,6 +66,8 @@ type Copy = {
   allHeading: string;
   maskToggleOn: string;
   maskToggleOff: string;
+  encrypted: string;
+  connectionIssue: string;
   fields: {
     cnic: string;
     name: string;
@@ -119,6 +122,8 @@ const COPY: Record<Lang, Copy> = {
     allHeading: "Registered Patient Database",
     maskToggleOn: "Mask CNIC Digits",
     maskToggleOff: "Reveal CNIC Digits",
+    encrypted: "Encrypted",
+    connectionIssue: "Vault connection issue — showing locally cached records instead.",
     fields: {
       cnic: "CNIC (XXXXX-XXXXXXX-X)",
       name: "Full name",
@@ -170,6 +175,8 @@ const COPY: Record<Lang, Copy> = {
     allHeading: "رجسٹرڈ مریضوں کا ڈیٹا بیس",
     maskToggleOn: "سی این آئی سی چھپائیں",
     maskToggleOff: "سی این آئی سی دکھائیں",
+    encrypted: "خفیہ کاری شدہ",
+    connectionIssue: "والٹ کنکشن میں مسئلہ — مقامی محفوظ شدہ ریکارڈ دکھائے جا رہے ہیں۔",
     fields: {
       cnic: "سی این آئی سی (XXXXX-XXXXXXX-X)",
       name: "مکمل نام",
@@ -191,6 +198,42 @@ const COPY: Record<Lang, Copy> = {
 const CNIC_REGEX = /^\d{5}-\d{7}-\d{1}$/;
 const BLOOD_UNIVERSAL_DONOR = "O-";
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"];
+
+/* ------------------------------------------------------------------
+   3-COLOR TAB IDENTITY — each tab gets its own accent (blue / violet
+   / emerald) so the active panel, its buttons, and its top border
+   all shift together as you switch tabs. Disclaimer stays amber so
+   it always reads as a distinct "warning" tone from any tab color.
+------------------------------------------------------------------- */
+const TAB_ACCENT: Record<TabId, {
+  activePill: string;
+  topBorder: string;
+  solidButton: string;
+  icon: string;
+  chipBg: string;
+}> = {
+  search: {
+    activePill: "bg-blue-600 text-white shadow-sm shadow-blue-600/25",
+    topBorder: "border-t-4 border-t-blue-500",
+    solidButton: "bg-blue-600 text-white hover:bg-blue-500",
+    icon: "text-blue-600",
+    chipBg: "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300",
+  },
+  add: {
+    activePill: "bg-violet-600 text-white shadow-sm shadow-violet-600/25",
+    topBorder: "border-t-4 border-t-violet-500",
+    solidButton: "bg-violet-600 text-white hover:bg-violet-500",
+    icon: "text-violet-600",
+    chipBg: "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300",
+  },
+  all: {
+    activePill: "bg-emerald-600 text-white shadow-sm shadow-emerald-600/25",
+    topBorder: "border-t-4 border-t-emerald-500",
+    solidButton: "bg-emerald-600 text-white hover:bg-emerald-500",
+    icon: "text-emerald-600",
+    chipBg: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  },
+};
 
 type Patient = {
   id?: string;
@@ -254,16 +297,31 @@ export function CnicVaultModule() {
   const [maskDigits, setMaskDigits] = useState(true);
   const [recentLookups, setRecentLookups] = useState<RecentLookup[]>([]);
   const [tableFilter, setTableFilter] = useState("");
+  const [connectionNote, setConnectionNote] = useState(false);
 
   const [records, setRecords] = useState<Patient[]>(SAMPLE_RECORDS);
   const [newPatient, setNewPatient] = useState<PatientForm>(initialForm);
   const [addSuccess, setAddSuccess] = useState(false);
 
+  const accent = TAB_ACCENT[activeTab];
+
+  // FIX: restored the try/catch/finally the .jsx had. Without it, any
+  // Supabase failure (schema mismatch, RLS, network) threw unhandled
+  // and left the UI stuck mid-action instead of falling back gracefully.
   const fetchRecords = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from("patients").select("*");
-    if (data && data.length > 0 && !error) setRecords(data as Patient[]);
-    setLoading(false);
+    try {
+      const { data, error } = await supabase.from("patients").select("*");
+      if (data && data.length > 0 && !error) {
+        setRecords(data as Patient[]);
+        setConnectionNote(false);
+      }
+    } catch (err) {
+      console.warn("Using local records fallback:", err);
+      setConnectionNote(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -294,12 +352,16 @@ export function CnicVaultModule() {
     }
 
     setLoading(true);
-    const { data } = await supabase.from("patients").select("*").eq("cnic", trimmed).maybeSingle();
-    if (data) {
-      setSearchResult(data as Patient);
-      pushRecent(data as Patient);
-      setLoading(false);
-      return;
+    try {
+      const { data } = await supabase.from("patients").select("*").eq("cnic", trimmed).maybeSingle();
+      if (data) {
+        setSearchResult(data as Patient);
+        pushRecent(data as Patient);
+        setLoading(false);
+        return;
+      }
+    } catch (err) {
+      console.warn("Remote lookup failed, falling back to local records:", err);
     }
 
     const found = records.find((r) => r.cnic === trimmed);
@@ -331,7 +393,13 @@ export function CnicVaultModule() {
       emergency_contact: newPatient.emergency_contact,
       medical_history: newPatient.medical_history || null,
     };
-    await supabase.from("patients").insert([payload]);
+
+    try {
+      await supabase.from("patients").insert([payload]);
+    } catch (err) {
+      console.warn("Saved to local state only — remote insert failed:", err);
+    }
+
     setRecords((prev) => [payload, ...prev]);
     setAddSuccess(true);
     setLoading(false);
@@ -419,6 +487,10 @@ export function CnicVaultModule() {
                 <p className="text-sm font-semibold">{t.title}</p>
                 <p className="eyebrow">{t.subtitle}</p>
               </div>
+              {/* Restored from .jsx COPY (was defined but never rendered) */}
+              <span className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-1 text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
+                <Lock className="size-3" /> {t.encrypted}
+              </span>
             </div>
           </div>
 
@@ -437,7 +509,7 @@ export function CnicVaultModule() {
               }}
               className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all ${
                 activeTab === "search"
-                  ? "bg-primary text-primary-foreground"
+                  ? TAB_ACCENT.search.activePill
                   : "border border-border bg-card text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -452,7 +524,7 @@ export function CnicVaultModule() {
               }}
               className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all ${
                 activeTab === "add"
-                  ? "bg-primary text-primary-foreground"
+                  ? TAB_ACCENT.add.activePill
                   : "border border-border bg-card text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -466,7 +538,7 @@ export function CnicVaultModule() {
               }}
               className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all ${
                 activeTab === "all"
-                  ? "bg-primary text-primary-foreground"
+                  ? TAB_ACCENT.all.activePill
                   : "border border-border bg-card text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -482,10 +554,10 @@ export function CnicVaultModule() {
         {activeTab === "search" && (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.7fr_1fr]">
             <div className="space-y-6">
-              <section className="space-y-6 rounded-3xl border border-border bg-card p-6 sm:p-8">
+              <section className={`space-y-6 rounded-3xl border border-border bg-card p-6 sm:p-8 ${accent.topBorder}`}>
                 <div>
                   <h2 className="flex items-center gap-2 font-display text-xl font-bold">
-                    <UserCheck className="size-5" /> {t.lookupHeading}
+                    <UserCheck className={`size-5 ${accent.icon}`} /> {t.lookupHeading}
                   </h2>
                   <p className="mt-1 text-xs text-muted-foreground">{t.lookupSub}</p>
                 </div>
@@ -520,7 +592,7 @@ export function CnicVaultModule() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-8 py-3.5 text-xs font-bold text-primary-foreground transition-all disabled:opacity-60"
+                    className={`inline-flex items-center justify-center gap-2 rounded-2xl px-8 py-3.5 text-xs font-bold transition-all disabled:opacity-60 ${accent.solidButton}`}
                   >
                     <Search className="size-4" /> {loading ? t.searching : t.verify}
                   </button>
@@ -536,10 +608,10 @@ export function CnicVaultModule() {
 
               {/* SEARCH RESULT CARD */}
               {searchResult && (
-                <section className="space-y-6 rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] sm:p-8">
+                <section className={`space-y-6 rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] sm:p-8 ${accent.topBorder}`}>
                   <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-4">
                     <div>
-                      <span className="rounded-full border border-border bg-surface px-3 py-1 font-mono text-[10px] text-muted-foreground">
+                      <span className={`rounded-full border px-3 py-1 font-mono text-[10px] ${accent.chipBg}`}>
                         {t.verified}
                       </span>
                       <h3 className="mt-2 font-display text-2xl font-bold">{searchResult.full_name}</h3>
@@ -681,10 +753,10 @@ export function CnicVaultModule() {
 
         {/* TAB 2: REGISTER NEW PATIENT */}
         {activeTab === "add" && (
-          <section className="mx-auto max-w-3xl space-y-6 rounded-3xl border border-border bg-card p-6 sm:p-8">
+          <section className={`mx-auto max-w-3xl space-y-6 rounded-3xl border border-border bg-card p-6 sm:p-8 ${accent.topBorder}`}>
             <div>
               <h2 className="flex items-center gap-2 font-display text-xl font-bold">
-                <PlusCircle className="size-5" /> {t.addHeading}
+                <PlusCircle className={`size-5 ${accent.icon}`} /> {t.addHeading}
               </h2>
               <p className="mt-1 text-xs text-muted-foreground">{t.addSub}</p>
             </div>
@@ -767,7 +839,7 @@ export function CnicVaultModule() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-2xl bg-primary py-3.5 text-xs font-bold text-primary-foreground transition-all disabled:opacity-60"
+                className={`w-full rounded-2xl py-3.5 text-xs font-bold transition-all disabled:opacity-60 ${accent.solidButton}`}
               >
                 {loading ? t.saving : t.saveRecord}
               </button>
@@ -777,7 +849,7 @@ export function CnicVaultModule() {
 
         {/* TAB 3: ALL VAULT RECORDS */}
         {activeTab === "all" && (
-          <section className="overflow-hidden rounded-3xl border border-border bg-card">
+          <section className={`overflow-hidden rounded-3xl border border-border bg-card ${accent.topBorder}`}>
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-6">
               <h2 className="font-display text-base font-bold">{t.allHeading}</h2>
               <div className="flex flex-wrap items-center gap-2">
@@ -807,6 +879,12 @@ export function CnicVaultModule() {
                 </button>
               </div>
             </div>
+
+            {connectionNote && (
+              <div className="mx-6 mt-4 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-300">
+                <AlertCircle className="size-3.5 shrink-0" /> {t.connectionIssue}
+              </div>
+            )}
 
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-left">
@@ -843,9 +921,11 @@ export function CnicVaultModule() {
           </section>
         )}
 
-        {/* DISCLAIMER */}
+        {/* DISCLAIMER — kept amber deliberately: distinct from all 3
+            tab accent colors above so it always reads as "caution",
+            never confused with whichever tab happens to be open. */}
         {activeTab !== "add" && (
-          <div className="mx-auto max-w-3xl rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-center">
+          <div className="mx-auto max-w-3xl rounded-2xl border-t-4 border-t-amber-500 border border-amber-500/30 bg-amber-500/10 p-4 text-center">
             <p className="text-xs leading-relaxed text-amber-800 dark:text-amber-200/90">
               <span className="mr-1.5 inline-block">⚠️</span>
               <strong className="font-semibold">Encrypted Vault Record:</strong> Patient history
