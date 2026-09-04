@@ -29,7 +29,7 @@ export default defineConfig(async ({ command }) => {
     plugins.splice(
       plugins.length - 1,
       0,
-      nitro({ preset: "cloudflare-module" }),
+      nitro({ preset: "vercel" }),
     );
   }
 
