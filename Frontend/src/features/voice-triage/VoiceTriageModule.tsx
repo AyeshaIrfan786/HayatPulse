@@ -5,11 +5,8 @@ import { ModuleHeader } from "@/components/shared/ModuleHeader";
 import { GROQ_API_URL, GROQ_API_KEY, GROQ_MODEL, type TriageChatMessage } from "@/lib/groq";
 
 // ------------------------------------------------------------
-// Minimal ambient types for the (non-standard) Web Speech API.
-// Not part of the default TS DOM lib — only what this file uses.
-// Speech recognition currently ships in Chrome/Edge/Android WebView;
 // unsupported browsers fall back to text input only.
-// ------------------------------------------------------------
+// -----------------------------------------------------------
 interface SpeechRecognitionResultLike {
   0: { transcript: string };
   isFinal: boolean;
