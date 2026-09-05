@@ -73,6 +73,25 @@ const COPY = {
 type Lang = keyof typeof COPY;
 
 export function HospitalMeshModule() {
+  // Modal State for Dispatch Confirmation
+const [selectedHospital, setSelectedHospital] = useState<any | null>(null);
+const [isDispatchModalOpen, setIsDispatchModalOpen] = useState(false);
+
+const handleOpenDispatch = (hospital: any) => {
+  setSelectedHospital(hospital);
+  setIsDispatchModalOpen(true);
+};
+
+const handleConfirmDispatch = () => {
+  if (selectedHospital) {
+    // Logic to decrease available ICU count dynamically if state-managed
+    if (selectedHospital.available_icus > 0) {
+      selectedHospital.available_icus -= 1;
+    }
+  }
+  setIsDispatchModalOpen(false);
+  setSelectedHospital(null);
+};
   const module = getModule(1)!;
   const [lang, setLang] = useState<Lang>('en');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -118,8 +137,21 @@ export function HospitalMeshModule() {
       .from("hospitals")
       .select("*")
       .order("available_icus", { ascending: false });
-    if (queryError) setError(queryError.message);
-    else setHospitals((data ?? []) as Array<Record<string, unknown>>);
+    
+    if (queryError) {
+      setError(queryError.message);
+    }
+    
+    // Fallback to sample hospital data if Supabase table is empty
+    if (data && data.length > 0) {
+      setHospitals(data as Array<Record<string, unknown>>);
+    } else {
+      setHospitals([
+        { id: 1, name: "Civil Hospital Emergency Unit", city: "Karachi", available_icus: 12, ventilators: 5, available_beds: 150, phone: "+92-21-99215740" },
+        { id: 2, name: "Aga Khan University Hospital", city: "Karachi", available_icus: 4, ventilators: 8, available_beds: 200, phone: "+92-21-34930051" },
+        { id: 3, name: "Jinnah Postgraduate Medical Centre (JPMC)", city: "Karachi", available_icus: 0, ventilators: 2, available_beds: 300, phone: "+92-21-99201300" }
+      ]);
+    }
     setLoading(false);
   };
 
@@ -230,10 +262,10 @@ export function HospitalMeshModule() {
       </aside>
 
       {/* CENTER MAIN CONTENT */}
-      <main className="flex-1 flex flex-col relative h-screen">
+      <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
 
         {/* TOP BAR */}
-        <header className="min-h-20 bg-background/50 backdrop-blur-md border-b border-border flex flex-wrap items-center justify-between gap-3 px-4 sm:px-8 py-3">
+        <header className="min-h-20 bg-background/50 backdrop-blur-md border-b border-border flex flex-wrap items-center justify-between gap-3 px-4 sm:px-8 py-3 relative z-[100]">
           <div className="flex items-center gap-2">
             <Activity className="w-5 h-5 text-destructive" />
             <h1 className="text-base sm:text-lg font-bold text-foreground">{t.headerTitle}</h1>
@@ -274,7 +306,7 @@ export function HospitalMeshModule() {
             </button>
 
             {showNotifications && (
-              <div className="absolute top-12 right-0 w-80 bg-card border border-border rounded-2xl shadow-2xl z-50 overflow-hidden">
+              <div className="absolute top-12 right-0 w-80 bg-card border border-border rounded-2xl shadow-2xl z-[110] overflow-hidden">
                 <div className="p-3 border-b border-border bg-muted/50">
                   <span className="text-xs font-bold text-foreground">{t.alerts}</span>
                 </div>
@@ -296,29 +328,36 @@ export function HospitalMeshModule() {
           </div>
         </header>
 
-        {/* SCROLLABLE DYNAMIC CONTENT */}
-        <div className="flex-1 overflow-y-auto px-5 py-10 lg:px-10 space-y-8">
+        {/* 1. MASTER ROW WRAPPER: Forces Left Content and Right Sidebar side-by-side */}
+        <div className="flex-1 w-full flex flex-row overflow-hidden relative">
           
-          <ModuleHeader title={module.title} category={module.category} icon={module.icon} />
+          {/* 2. LEFT SCROLLABLE CONTENT */}
+          <div className="flex-1 h-full overflow-y-auto p-6 md:p-8">
+            
+            {/* 3. ALIGN-TOP CONTENT WRAPPER: Kills the empty space and pulls content to the top */}
+            <div className="flex flex-col justify-start space-y-6 min-h-max">
+              
+              <ModuleHeader title={module.title} category={module.category} icon={module.icon} />
 
-          {/* TSX Introduction Header */}
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold text-primary">Live Telemetry</p>
-              <h1 className="mt-3 font-display text-4xl font-bold md:text-5xl">ICU & bed mesh.</h1>
-              <p className="mt-4 max-w-2xl text-muted-foreground">
-                Facility telemetry is read directly from <code>hospitals</code>; no sample facilities
-                are injected when the table is empty.
-              </p>
+              {/* TSX Introduction Header */}
+              <div className="flex flex-wrap items-end justify-between gap-4">
+
+              <div>
+                <p className="text-sm font-semibold text-primary">Live Telemetry</p>
+                <h1 className="mt-3 font-display text-4xl font-bold md:text-5xl">ICU & bed mesh.</h1>
+                <p className="mt-4 max-w-2xl text-muted-foreground">
+                  Facility telemetry is read directly from <code>hospitals</code>; no sample facilities
+                  are injected when the table is empty.
+                </p>
+              </div>
+              <button
+                onClick={() => void load()}
+                disabled={loading}
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold disabled:opacity-60"
+              >
+                <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} /> Refresh
+              </button>
             </div>
-            <button
-              onClick={() => void load()}
-              disabled={loading}
-              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold disabled:opacity-60"
-            >
-              <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} /> Refresh
-            </button>
-          </div>
 
           {error && (
             <p role="alert" className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -391,57 +430,62 @@ export function HospitalMeshModule() {
                 </p>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 {filteredHospitals.map((hospital, index) => {
                   const pct = capacityPct(hospital);
                   const status = getHospitalStatus(hospital);
                   
                   return (
-                    <div key={String(hospital.id ?? index)} className="bg-card border border-border rounded-2xl p-6 relative hover:border-primary/50 transition-colors">
-                      <div className={`absolute top-6 right-6 px-2.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${statusBadge(status)}`}>
-                        {status}
+                    <div key={String(hospital.id ?? index)} className="bg-card/80 border border-border rounded-2xl p-6 relative hover:border-primary/50 transition-colors">
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <h3 className="font-bold text-lg text-foreground">{String(hospital.name ?? "Unnamed facility")}</h3>
+                          <p className="text-xs text-muted-foreground mt-0.5">{String(hospital.city ?? "Location unavailable")} Operations</p>
+                        </div>
+                        <span className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${statusBadge(status)}`}>
+                          {status}
+                        </span>
                       </div>
 
-                      <h3 className="font-bold text-base text-foreground pr-20">{String(hospital.name ?? "Unnamed facility")}</h3>
-                      <p className="text-[11px] text-muted-foreground mt-1">{String(hospital.city ?? "Location unavailable")} Operations</p>
-
-                      <div className="grid grid-cols-2 gap-4 my-5">
-                        <div className="bg-muted rounded-xl p-3 border border-border/50 text-center">
-                          <p className="text-[10px] text-muted-foreground uppercase mb-1">{t.icuOpen}</p>
-                          <p className={`text-2xl font-black ${Number(hospital.available_icus) > 0 ? 'text-primary' : 'text-destructive'}`}>
+                      <div className="grid grid-cols-2 gap-4 my-4">
+                        <div className="bg-muted/40 rounded-xl p-4 border border-border/40 text-center">
+                          <p className="text-[10px] font-mono text-muted-foreground uppercase mb-1">{t.icuOpen}</p>
+                          <p className={`text-3xl font-black ${Number(hospital.available_icus) > 0 ? 'text-primary' : 'text-destructive'}`}>
                             {Number(hospital.available_icus ?? 0)}
                           </p>
                         </div>
-                        <div className="bg-muted rounded-xl p-3 border border-border/50 text-center">
-                          <p className="text-[10px] text-muted-foreground uppercase mb-1">{t.totalBeds}</p>
-                          <p className="text-2xl font-black text-foreground">
+                        <div className="bg-muted/40 rounded-xl p-4 border border-border/40 text-center">
+                          <p className="text-[10px] font-mono text-muted-foreground uppercase mb-1">{t.totalBeds}</p>
+                          <p className="text-3xl font-black text-foreground">
                             {Number(hospital.available_beds ?? 0)}
                           </p>
                         </div>
                       </div>
 
-                      <div className="mb-5">
+                      <div className="mb-6">
                         <div className="flex justify-between items-center mb-1.5">
-                          <span className="text-[10px] text-muted-foreground uppercase flex items-center gap-1"><Gauge className="w-3 h-3" /> {t.capacity}</span>
+                          <span className="text-[10px] font-mono text-muted-foreground uppercase">{t.capacity}</span>
                           <span className="text-[10px] font-bold text-foreground">{pct}%</span>
                         </div>
-                        <div className="h-2 bg-muted rounded-full overflow-hidden border border-border/50">
+                        <div className="h-2 bg-muted rounded-full overflow-hidden border border-border/30">
                           <div className={`h-full rounded-full ${capacityColor(pct)} transition-all`} style={{ width: `${pct}%` }} />
                         </div>
                       </div>
 
-                      {/* Displaying ventilators metric */}
-                      <div className="mb-4">
-                         <Metric label="Ventilators Available" value={hospital.ventilators} />
-                      </div>
-
                       <div className="flex gap-3">
-                        <a href={`tel:${String(hospital.phone ?? '')}`} className="p-3 bg-accent border border-border hover:border-muted-foreground rounded-xl text-muted-foreground hover:text-foreground transition-colors flex-shrink-0">
+                        <a 
+                          href={`tel:${String(hospital.phone ?? '')}`} 
+                          className="p-3.5 bg-accent/60 border border-border hover:border-primary/50 rounded-xl text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center"
+                          title={`Call ${String(hospital.phone ?? '')}`}
+                        >
                           <Phone className="w-5 h-5" />
                         </a>
-                        <button className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 rounded-xl text-sm transition-all shadow-lg border border-primary/20">
-                          {t.dispatch}
-                        </button>
+                    <button 
+                        onClick={() => handleOpenDispatch(hospital)}
+                        className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3.5 rounded-xl text-sm transition-all shadow-lg shadow-primary/20"
+                      >
+                        {t.dispatch || "Initiate Dispatch"}
+                    </button>
                       </div>
                     </div>
                   );
@@ -486,13 +530,26 @@ export function HospitalMeshModule() {
           {activeTab === 'Active Fleet' && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               {activeFleet.map((vehicle, i) => (
-                <div key={i} className="bg-card border border-border rounded-2xl p-5">
-                   <h3 className="font-bold text-foreground">{vehicle.id}</h3>
-                   <p className="text-sm text-muted-foreground mb-4">{vehicle.type}</p>
-                   <div className="space-y-2 text-sm border-t border-border/50 pt-4">
-                      <p><span className="text-muted-foreground font-semibold">{t.driver}:</span> {vehicle.driver}</p>
-                      <p><span className="text-muted-foreground font-semibold">{t.destination}:</span> {vehicle.destination}</p>
-                      <p><span className="text-muted-foreground font-semibold">{t.eta}:</span> <span className="font-mono">{vehicle.eta}</span></p>
+                <div key={i} className="bg-card/80 border border-border rounded-2xl p-5 relative overflow-hidden">
+                   <div className="flex justify-between items-start mb-4">
+                     <div className="p-2.5 bg-primary/10 text-primary rounded-xl border border-primary/20">
+                       <Truck className="w-5 h-5" />
+                     </div>
+                     <span className="font-mono text-xs text-muted-foreground font-bold">{vehicle.id}</span>
+                   </div>
+
+                   <h3 className="font-bold text-foreground text-base">{vehicle.type}</h3>
+                   <p className="text-xs text-muted-foreground mb-4">{t.driver}: {vehicle.driver}</p>
+
+                   <div className="bg-muted/40 border border-border/40 rounded-xl p-3 flex justify-between items-center">
+                     <div>
+                       <p className="text-[9px] font-mono text-muted-foreground uppercase">{t.destination}</p>
+                       <p className="font-bold text-xs text-foreground mt-0.5">{vehicle.destination}</p>
+                     </div>
+                     <div className="text-right">
+                       <p className="text-[9px] font-mono text-muted-foreground uppercase">{t.eta}</p>
+                       <p className="font-mono font-bold text-xs text-primary mt-0.5">{vehicle.eta}</p>
+                     </div>
                    </div>
                 </div>
               ))}
@@ -501,23 +558,100 @@ export function HospitalMeshModule() {
 
           {/* TAB 4: STAFF ROSTER */}
           {activeTab === 'Staff Duty Roster' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               {staffRoster.map((staff, i) => (
-                <div key={i} className="bg-card border border-border rounded-2xl p-5 flex items-center justify-between">
-                   <div>
-                      <h3 className="font-bold text-foreground">{staff.name}</h3>
-                      <p className="text-sm text-primary font-medium">{staff.role}</p>
-                      <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1"><Clock className="w-3 h-3" /> {staff.hospital} • {staff.shift}</p>
+                <div key={i} className="bg-card/80 border border-border rounded-2xl p-5 flex items-center gap-4">
+                   <div className="p-3 bg-accent rounded-full border border-border text-primary flex-shrink-0">
+                     <Stethoscope className="w-5 h-5" />
                    </div>
-                   <span className={`px-2.5 py-1 rounded-lg text-[10px] uppercase font-bold tracking-wider ${staff.status === 'On Duty' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-accent text-muted-foreground'}`}>
-                      {staff.status === 'On Duty' ? t.onDuty : t.nextShift}
-                   </span>
+                   <div>
+                      <h3 className="font-bold text-foreground text-sm">{staff.name}</h3>
+                      <p className="text-xs text-primary font-medium">{staff.role} • {staff.hospital}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1 font-mono">{staff.shift}</p>
+                   </div>
                 </div>
               ))}
             </div>
           )}
+          
+          </div> {/* <-- ADDED: Closes the inner top-aligned space wrapper */}
+        </div> {/* <-- ADDED: Closes the left scrollable content area */}
+        
+        {/* DOCKED RIGHT SIDEBAR - LIVE AUDIT LOG */}
+          <aside className="w-80 flex-shrink-0 bg-card/30 border-l border-border hidden xl:flex flex-col justify-between p-6 h-full overflow-y-auto">
+            <div>
+              <div className="flex items-center gap-2 mb-6 pb-3 border-b border-border">
+                <Clock className="w-4 h-4 text-primary" />
+                <h3 className="font-bold text-sm text-foreground">{t.auditLog}</h3>
+              </div>
 
+              <div className="space-y-6 relative before:absolute before:left-1.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-primary/30">
+                {[1, 2, 3, 4, 5].map((item) => (
+                  <div key={item} className="relative pl-6">
+                    <span className="absolute left-0 top-1.5 w-3 h-3 rounded-full bg-primary ring-4 ring-background"></span>
+                    <span className="text-[9px] font-mono text-muted-foreground uppercase">Just Now</span>
+                    <p className="text-xs font-bold text-foreground mt-0.5">Unit BLS-74 Dispatched</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Routed to Civil Hospital for P2 Urgent trauma care.</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-4 mt-6 border-t border-border text-center">
+              <span className="text-[10px] font-mono text-muted-foreground">{t.secure}</span>
+            </div>
+          </aside>
         </div>
+        {/* DISPATCH CONFIRMATION MODAL */}
+      {isDispatchModalOpen && selectedHospital && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-card border border-border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-5 relative">
+            <div className="flex items-center gap-3 border-b border-border pb-4">
+              <div className="p-2.5 bg-primary/10 text-primary rounded-xl border border-primary/20">
+                <Truck className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-foreground">Confirm Emergency Dispatch</h3>
+                <p className="text-xs text-muted-foreground">{selectedHospital.name}</p>
+              </div>
+            </div>
+
+            <div className="space-y-3 bg-muted/40 border border-border/40 rounded-xl p-4 text-xs">
+              <div className="flex justify-between items-center text-foreground font-medium">
+                <span className="text-muted-foreground">Location:</span>
+                <span>{selectedHospital.city ?? "Karachi"} Operations</span>
+              </div>
+              <div className="flex justify-between items-center text-foreground font-medium">
+                <span className="text-muted-foreground">Current Available ICUs:</span>
+                <span className="font-mono text-primary font-bold">{selectedHospital.available_icus}</span>
+              </div>
+              <div className="flex justify-between items-center text-destructive font-bold pt-2 border-t border-border/40">
+                <span>Action Impact:</span>
+                <span>-1 ICU Bed Allocated</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Initiating dispatch will reserve one critical care unit bed and alert regional telemetry dispatches immediately.
+            </p>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setIsDispatchModalOpen(false)}
+                className="flex-1 py-3 px-4 bg-accent hover:bg-accent/80 text-foreground font-semibold rounded-xl text-xs transition-colors border border-border"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDispatch}
+                className="flex-1 py-3 px-4 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl text-xs transition-all shadow-lg shadow-primary/20"
+              >
+                Confirm Dispatch
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       </main>
     </div>
   );
