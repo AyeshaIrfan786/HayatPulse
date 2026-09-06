@@ -1,5 +1,13 @@
-import { ArrowUpRight, HeartPulse, LogOut, RefreshCw, Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { 
+  AlertTriangle, 
+  Activity, 
+  ArrowUpRight, 
+  HeartPulse, 
+  LogOut, 
+  RefreshCw, 
+  Search 
+} from "lucide-react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
 import {
@@ -31,6 +39,17 @@ export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
 });
 
+const TICKER_ITEMS: string[] = [
+  "ICU Telemetry Active",
+  "Voice Triage Online",
+  "Blood Matcher Connected",
+  "CNIC Vault Ready",
+  "PakSign Portal Running",
+  "Flood Rescue Network Active",
+  "Rural TeleClinic Available",
+  "Maternal AI Monitoring Live",
+];
+
 function Dashboard() {
   const navigate = useNavigate();
   const { session, user, loading: authLoading, signOut } = useAuth();
@@ -41,6 +60,23 @@ function Dashboard() {
   const [loadingData, setLoadingData] = useState(true);
   const [dataError, setDataError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
+
+  // Duplicate items for seamless continuous ticker looping
+  const tickerList = [ "ICU Telemetry Active",
+  "Voice Triage Online",
+  "Blood Matcher Connected",
+  "CNIC Vault Ready",
+  "PakSign Portal Running",
+  "Flood Rescue Network Active",
+  "Rural TeleClinic Available",
+  "Maternal AI Monitoring Live", "ICU Telemetry Active",
+  "Voice Triage Online",
+  "Blood Matcher Connected",
+  "CNIC Vault Ready",
+  "PakSign Portal Running",
+  "Flood Rescue Network Active",
+  "Rural TeleClinic Available",
+  "Maternal AI Monitoring Live"];
 
   const refreshData = async () => {
     setLoadingData(true);
@@ -125,9 +161,12 @@ function Dashboard() {
             <span className="font-display text-xl font-bold tracking-tight">HayatPulse</span>
           </Link>
 
-          <div className="hidden items-center gap-2 rounded-full bg-surface px-4 py-2 text-sm text-muted-foreground md:flex">
-            <span className="size-1.5 rounded-full bg-emerald-500" />
-            Connected to Supabase · live data
+          <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-950 font-semibold backdrop-blur-xl shadow-[0_0_20px_rgba(16,185,129,0.15)] [text-shadow:_0_1px_2px_rgba(0,0,0,0.15)]">
+            <span className="relative flex h-2.5 w-2.5 items-center justify-center">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75"></span>
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-600"></span>
+            </span>
+            <span>PAKISTAN'S HEALTHCARE MESH • امید آپ کی زندگی کی</span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -137,7 +176,7 @@ function Dashboard() {
             <button
               onClick={handleSignOut}
               disabled={signingOut}
-              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold transition-colors hover:bg-red-500 hover:text-white hover:border-red-900 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {signingOut ? (
                 <RefreshCw className="size-4 animate-spin" />
@@ -292,6 +331,83 @@ function Dashboard() {
           </div>
         </section>
       </main>
+
+      {/* FULL-WIDTH ENTERPRISE FOOTER & TICKER */}
+      <div className="w-full mt-24 border-t border-slate-300 bg-slate-200/70 pt-10 pb-12">
+        <div className="mx-auto max-w-7xl px-5 lg:px-10 space-y-10">
+          
+          {/* Live Running Ticker */}
+          <div className="relative overflow-hidden rounded-full border border-slate-200 bg-white/80 backdrop-blur-sm py-3 px-2 shadow-sm">
+            <div className="flex whitespace-nowrap animate-[ticker_30s_linear_infinite]">
+              {tickerList.map((item, index) => (
+                <div
+                  key={`${item}-${index}`}
+                  className="inline-flex items-center gap-2 mx-6 text-xs font-semibold text-slate-700"
+                >
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+                  </span>
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Clean Footer Card */}
+          <footer className="rounded-3xl border border-slate-200/80 bg-white p-8 sm:p-10 shadow-sm space-y-8">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center size-10 bg-slate-950 rounded-full text-white shadow-sm">
+                  <Activity className="size-5 text-white" />
+                </div>
+                <div>
+                  <span className="font-bold text-base text-slate-900 tracking-tight block">
+                    HayatPulse AI Platform
+                  </span>
+                  <span className="text-xs text-slate-500 font-medium">
+                    Zero-Exclusion Emergency Healthcare Mesh
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 text-xs font-mono">
+                <span className="flex items-center gap-2 text-emerald-800 bg-emerald-500/10 px-3.5 py-1.5 rounded-full border border-emerald-500/20 font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Nodes Operational
+                </span>
+                <span className="text-slate-500 font-medium bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
+                  v2.6 Enterprise
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start gap-3.5">
+              <div className="p-2 bg-amber-100/80 rounded-xl text-amber-800 shrink-0 mt-0.5">
+                <AlertTriangle className="size-4" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-xs font-bold text-amber-900 tracking-wider uppercase font-mono">
+                  Clinical Decision-Support & Emergency System Disclaimer
+                </h4>
+                <p className="text-[11px] text-amber-900/80 leading-relaxed font-normal">
+                  HayatPulse AI operates strictly as an emergency triage router and clinical decision-support ecosystem. Diagnostic interpretations, telemetry projections, and sign-language translations generated by on-device AI engines are intended for preliminary screening only. All outputs must be validated by licensed healthcare professionals prior to operative dispatch or medical intervention.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row justify-between items-center text-[11px] text-slate-500 border-t border-slate-100 pt-6 gap-4">
+              <p>© {new Date().getFullYear()} HayatPulse AI. Built for national healthcare resilience.</p>
+              <div className="flex gap-6 font-medium">
+                <a href="#privacy" className="hover:text-slate-900 transition-colors">Privacy Policy</a>
+                <a href="#protocol" className="hover:text-slate-900 transition-colors">Emergency Protocol</a>
+                <a href="#architecture" className="hover:text-slate-900 transition-colors">System Architecture</a>
+              </div>
+            </div>
+          </footer>
+
+        </div>
+      </div>
     </div>
   );
 }

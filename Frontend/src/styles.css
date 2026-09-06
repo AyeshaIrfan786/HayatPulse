@@ -176,3 +176,12 @@
   text-transform: uppercase;
   color: var(--color-muted-foreground);
 }
+
+@keyframes ticker {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
