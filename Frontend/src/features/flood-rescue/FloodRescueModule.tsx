@@ -208,17 +208,17 @@ export function FloodRescueModule() {
 
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               <Field
-                label="Reporter Name 👤"
+                label="Reporter Name "
                 value={form.reporter_name}
                 onChange={(value) => setField("reporter_name", value)}
               />
               <Field
-                label="Phone Number 📞"
+                label="Phone Number "
                 value={form.phone}
                 onChange={(value) => setField("phone", value)}
               />
               <Field
-                label="People Count * 👥"
+                label="People Count * "
                 type="number"
                 value={form.people_count}
                 onChange={(value) => setField("people_count", value)}
@@ -235,19 +235,19 @@ export function FloodRescueModule() {
                   }
                   className="mt-2 w-full rounded-2xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-sky-500 transition-all"
                 >
-                  <option value="low">🟢 Low (Need non-urgent assistance)</option>
-                  <option value="medium">🟡 Medium (Trapped / Rising Water)</option>
-                  <option value="critical">🔴 Critical (Immediate Life Threat)</option>
+                  <option value="low"> Low (Need non-urgent assistance)</option>
+                  <option value="medium"> Medium (Trapped / Rising Water)</option>
+                  <option value="critical"> Critical (Immediate Life Threat)</option>
                 </select>
               </label>
 
               <Field
-                label="Latitude * 🌐"
+                label="Latitude * "
                 value={form.latitude}
                 onChange={(value) => setField("latitude", value)}
               />
               <Field
-                label="Longitude * 🌐"
+                label="Longitude * "
                 value={form.longitude}
                 onChange={(value) => setField("longitude", value)}
               />
@@ -255,7 +255,7 @@ export function FloodRescueModule() {
 
             <label className="mt-4 block">
               <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
-                Rescue & Hazard Notes 📝
+                Rescue & Hazard Notes 
               </span>
               <textarea
                 value={form.notes}
